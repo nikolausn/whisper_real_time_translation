@@ -31,6 +31,10 @@ def main():
                         choices=["auto", "cuda","cpu"])                   
     parser.add_argument("--compute_type", default="auto", help="Type of quantization to use",
                         choices=["auto", "int8", "int8_floatt16", "float16", "int16", "float32"])
+    parser.add_argument("--source_lang", default='en',
+                        help="Source language speaker to focus on." , type=str)
+    parser.add_argument("--task", default='transcribe',
+                        help="transcribe or translate." , type=str)
     parser.add_argument("--translation_lang", default='English',
                         help="Which language should we translate into." , type=str)
     parser.add_argument("--non_english", action='store_true',
@@ -51,6 +55,9 @@ def main():
                             help="Default microphone name for SpeechRecognition. "
                                  "Run this with 'list' to view available Microphones.", type=str)
     args = parser.parse_args()
+
+    task = args.task
+    source_lang = args.source_lang
     
     # The last time a recording was retreived from the queue.
     phrase_time = None
@@ -140,7 +147,6 @@ def main():
                     print((now - phrase_time), timedelta(seconds=phrase_timeout), total_phrase)
                 #if phrase_time and now - phrase_time > timedelta(seconds=phrase_timeout):
                 if phrase_time and total_phrase > timedelta(seconds=phrase_timeout):
-                    last_sample = bytes()
                     phrase_complete = True
                     total_phrase=timedelta(seconds=0)
                 # This is the last time we received new audio data from the queue.
@@ -162,20 +168,23 @@ def main():
 
                 # Read the transcription.
                 text = ""
-                    
-                segments, info = audio_model.transcribe(temp_file,language="ja",task="translate")
-                for segment in segments:
-                    text += segment.text
-                #text = result['text'].strip()
 
                 # If we detected a pause between recordings, add a new item to our transcripion.
                 # Otherwise edit the existing one.
+
                 if phrase_complete:
+                    segments, info = audio_model.transcribe(temp_file, language=source_lang, task=task)
+                    for segment in segments:
+                        text += segment.text
+                    # text = result['text'].strip()
+
                     transcription.append(text)
+                    last_sample = bytes()
                 else:
-                    transcription[-1] = text
+                    #transcription[-1] = text
+                    pass
                 #last_four_elements = transcription[-10:]
-                last_four_elements = transcription[-4:]
+                last_four_elements = transcription[-5:]
                 result = ''.join(last_four_elements)    
                 sentences = sent_tokenize(result)
                 window.update_text(sentences, translation_lang)

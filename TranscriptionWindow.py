@@ -33,11 +33,11 @@ class TranscriptionWindow:
 
         self.update_text("", "")
 
-    def update_text(self, text, translation_lang):
+    def update_text(self, text, translation_lang,len_text=4):
         text_to_display = ""
         #gtranslate = GoogleTranslate()
-        num = -2
-        if len(text) < 2:
+        num = -len_text
+        if len(text) < len_text:
             num = -len(text)
         for i in range(num, 0, 1):
             text_to_display += text[i] + '\n'
