@@ -35,17 +35,21 @@ class TranscriptionWindow:
 
     def update_text(self, text, translation_lang):
         text_to_display = ""
-        gtranslate = GoogleTranslate()
+        #gtranslate = GoogleTranslate()
         num = -2
         if len(text) < 2:
             num = -len(text)
         for i in range(num, 0, 1):
             text_to_display += text[i] + '\n'
+            """
             try:
-                translated_text = str(gtranslate.translate(text[i], translation_lang))
+                #translated_text = str(gtranslate.translate(text[i], translation_lang))
+                translated_text = ""
+                pass
             except:
                 translated_text = ""
             text_to_display += translated_text + '\n'
+            """
             print(text_to_display)
         self.text_widget.delete(1.0, tk.END)
         self.text_widget.insert(tk.END, text_to_display)

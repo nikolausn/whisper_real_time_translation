@@ -17,6 +17,7 @@ from tempfile import NamedTemporaryFile
 from time import sleep
 from sys import platform
 from faster_whisper import WhisperModel
+from sympy import timed
 from translatepy.translators.google import GoogleTranslate
 from TranscriptionWindow import TranscriptionWindow
     
@@ -24,7 +25,7 @@ def main():
     
    
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", default="medium", help="Model to use",
+    parser.add_argument("--model", default="large-v3", help="Model to use",
                         choices=["tiny", "base", "small", "medium", "large"])
     parser.add_argument("--device", default="auto", help="device to user for CTranslate2 inference",
                         choices=["auto", "cuda","cpu"])                   
@@ -81,10 +82,10 @@ def main():
         source = sr.Microphone(sample_rate=16000)
     
     if args.model == "large":
-        args.model = "large-v2"    
+        args.model = "large-v3"
     
     model = args.model
-    if args.model != "large-v2" and not args.non_english:
+    if args.model != "large-v3" and not args.non_english:
         model = model + ".en"
         
     translation_lang = args.translation_lang    
@@ -124,6 +125,8 @@ def main():
     # Cue the user that we're ready to go.
     print("Model loaded.\n")
 
+    total_phrase = timedelta(seconds=0)
+
     while True:
         try:
             now = datetime.utcnow()
@@ -132,9 +135,14 @@ def main():
                 phrase_complete = False
                 # If enough time has passed between recordings, consider the phrase complete.
                 # Clear the current working audio buffer to start over with the new data.
-                if phrase_time and now - phrase_time > timedelta(seconds=phrase_timeout):
+                if phrase_time:
+                    total_phrase += (now - phrase_time)
+                    print((now - phrase_time), timedelta(seconds=phrase_timeout), total_phrase)
+                #if phrase_time and now - phrase_time > timedelta(seconds=phrase_timeout):
+                if phrase_time and total_phrase > timedelta(seconds=phrase_timeout):
                     last_sample = bytes()
                     phrase_complete = True
+                    total_phrase=timedelta(seconds=0)
                 # This is the last time we received new audio data from the queue.
                 phrase_time = now
 
@@ -149,12 +157,13 @@ def main():
 
                 # Write wav data to the temporary file as bytes.
                 with open(temp_file, 'w+b') as f:
+                    print(temp_file)
                     f.write(wav_data.read())
 
                 # Read the transcription.
                 text = ""
                     
-                segments, info = audio_model.transcribe(temp_file)
+                segments, info = audio_model.transcribe(temp_file,language="ja",task="translate")
                 for segment in segments:
                     text += segment.text
                 #text = result['text'].strip()
@@ -165,7 +174,8 @@ def main():
                     transcription.append(text)
                 else:
                     transcription[-1] = text
-                last_four_elements = transcription[-10:]
+                #last_four_elements = transcription[-10:]
+                last_four_elements = transcription[-4:]
                 result = ''.join(last_four_elements)    
                 sentences = sent_tokenize(result)
                 window.update_text(sentences, translation_lang)
