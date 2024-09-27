@@ -8,9 +8,6 @@ import subprocess
 import nltk
 from nltk.tokenize import sent_tokenize
 
-
-
-
 from datetime import datetime, timedelta
 from queue import Queue
 from tempfile import NamedTemporaryFile
@@ -20,23 +17,22 @@ from faster_whisper import WhisperModel
 from sympy import timed
 from translatepy.translators.google import GoogleTranslate
 from TranscriptionWindow import TranscriptionWindow
-    
+
+
 def main():
-    
-   
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", default="large-v3", help="Model to use",
                         choices=["tiny", "base", "small", "medium", "large"])
     parser.add_argument("--device", default="auto", help="device to user for CTranslate2 inference",
-                        choices=["auto", "cuda","cpu"])                   
+                        choices=["auto", "cuda", "cpu"])
     parser.add_argument("--compute_type", default="auto", help="Type of quantization to use",
                         choices=["auto", "int8", "int8_floatt16", "float16", "int16", "float32"])
     parser.add_argument("--source_lang", default='en',
-                        help="Source language speaker to focus on." , type=str)
+                        help="Source language speaker to focus on.", type=str)
     parser.add_argument("--task", default='transcribe',
-                        help="transcribe or translate." , type=str)
+                        help="transcribe or translate.", type=str)
     parser.add_argument("--translation_lang", default='English',
-                        help="Which language should we translate into." , type=str)
+                        help="Which language should we translate into.", type=str)
     parser.add_argument("--non_english", action='store_true',
                         help="Don't use the english model.")
     parser.add_argument("--threads", default=0,
@@ -45,11 +41,11 @@ def main():
                         help="Energy level for mic to detect.", type=int)
     parser.add_argument("--record_timeout", default=2,
                         help="How real time the recording is in seconds.", type=float)
-                        
+
     parser.add_argument("--phrase_timeout", default=3,
                         help="How much empty space between recordings before we "
-                             "consider it a new line in the transcription.", type=float) 
-                             
+                             "consider it a new line in the transcription.", type=float)
+
     if 'linux' in platform:
         parser.add_argument("--default_microphone", default='pulse',
                             help="Default microphone name for SpeechRecognition. "
@@ -58,7 +54,7 @@ def main():
 
     task = args.task
     source_lang = args.source_lang
-    
+
     # The last time a recording was retreived from the queue.
     phrase_time = None
     # Current raw audio bytes.
@@ -70,15 +66,15 @@ def main():
     recorder.energy_threshold = args.energy_threshold
     # Definitely do this, dynamic energy compensation lowers the energy threshold dramtically to a point where the SpeechRecognizer never stops recording.
     recorder.dynamic_energy_threshold = False
-    
-    # Important for linux users. 
+
+    # Important for linux users.
     # Prevents permanent application hang and crash by using the wrong Microphone
     if 'linux' in platform:
         mic_name = args.default_microphone
         if not mic_name or mic_name == 'list':
             print("Available microphone devices are: ")
             for index, name in enumerate(sr.Microphone.list_microphone_names()):
-                print(f"Microphone with name \"{name}\" found")   
+                print(f"Microphone with name \"{name}\" found")
             return
         else:
             for index, name in enumerate(sr.Microphone.list_microphone_names()):
@@ -87,36 +83,36 @@ def main():
                     break
     else:
         source = sr.Microphone(sample_rate=16000)
-    
+
     if args.model == "large":
         args.model = "large-v3"
-    
+
     model = args.model
     if args.model != "large-v3" and not args.non_english:
         model = model + ".en"
-        
-    translation_lang = args.translation_lang    
+
+    translation_lang = args.translation_lang
     device = args.device
     if device == "cpu":
         compute_type = "int8"
     else:
         compute_type = args.compute_type
     cpu_threads = args.threads
-    
+
     nltk.download('punkt')
-    audio_model = WhisperModel(model, device = device, compute_type = compute_type , cpu_threads = cpu_threads)
+    audio_model = WhisperModel(model, device=device, compute_type=compute_type, cpu_threads=cpu_threads)
     window = TranscriptionWindow()
-    
+
     record_timeout = args.record_timeout
     phrase_timeout = args.phrase_timeout
 
-    temp_file = NamedTemporaryFile().name 
+    temp_file = NamedTemporaryFile().name
     transcription = ['']
-    
+
     with source:
         recorder.adjust_for_ambient_noise(source)
 
-    def record_callback(_, audio:sr.AudioData) -> None:
+    def record_callback(_, audio: sr.AudioData) -> None:
         """
         Threaded callback function to recieve audio data when recordings finish.
         audio: An AudioData containing the recorded bytes.
@@ -145,10 +141,10 @@ def main():
                 if phrase_time:
                     total_phrase += (now - phrase_time)
                     print((now - phrase_time), timedelta(seconds=phrase_timeout), total_phrase)
-                #if phrase_time and now - phrase_time > timedelta(seconds=phrase_timeout):
+                # if phrase_time and now - phrase_time > timedelta(seconds=phrase_timeout):
                 if phrase_time and total_phrase > timedelta(seconds=phrase_timeout):
                     phrase_complete = True
-                    total_phrase=timedelta(seconds=0)
+                    total_phrase = timedelta(seconds=0)
                 # This is the last time we received new audio data from the queue.
                 phrase_time = now
 
@@ -181,11 +177,11 @@ def main():
                     transcription.append(text)
                     last_sample = bytes()
                 else:
-                    #transcription[-1] = text
+                    # transcription[-1] = text
                     pass
-                #last_four_elements = transcription[-10:]
+                # last_four_elements = transcription[-10:]
                 last_four_elements = transcription[-5:]
-                result = ''.join(last_four_elements)    
+                result = ''.join(last_four_elements)
                 sentences = sent_tokenize(result)
                 window.update_text(sentences, translation_lang)
                 # Clear the console to reprint the updated transcription.
@@ -201,5 +197,4 @@ def main():
 
 
 if __name__ == "__main__":
-    
     main()
