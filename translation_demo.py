@@ -8,9 +8,6 @@ import subprocess
 import nltk
 from nltk.tokenize import sent_tokenize
 
-
-
-
 from datetime import datetime, timedelta
 from queue import Queue
 from tempfile import NamedTemporaryFile
