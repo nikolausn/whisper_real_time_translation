@@ -20,10 +20,10 @@ from faster_whisper import WhisperModel
 from sympy import timed
 from translatepy.translators.google import GoogleTranslate
 from TranscriptionWindow import TranscriptionWindow
+
+skip_list = ["thank you for watching","thank you for viewing","please subscribe","thank you for your viewing","thank you very much"]
     
-def main():
-    
-   
+def main():       
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", default="large-v3", help="Model to use",
                         choices=["tiny", "base", "small", "medium", "large"])
@@ -162,9 +162,11 @@ def main():
                 wav_data = io.BytesIO(audio_data.get_wav_data())
 
                 # Write wav data to the temporary file as bytes.
+                """
                 with open(temp_file, 'w+b') as f:
                     print(temp_file)
                     f.write(wav_data.read())
+                """
 
                 # Read the transcription.
                 text = ""
@@ -173,8 +175,16 @@ def main():
                 # Otherwise edit the existing one.
 
                 if phrase_complete:
-                    segments, info = audio_model.transcribe(temp_file, language=source_lang, task=task)
+                    #segments, info = audio_model.transcribe(temp_file, language=source_lang, task=task)
+                    segments, info = audio_model.transcribe(wav_data, language=source_lang, task=task)
                     for segment in segments:
+                        skipable=False
+                        for skip in skip_list:
+                           if segment.text.strip().lower().find(skip)>=0:
+                              skipable=True
+                              break
+                        if skipable:
+                           continue
                         text += segment.text
                     # text = result['text'].strip()
 
