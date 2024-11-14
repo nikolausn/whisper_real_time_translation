@@ -112,39 +112,43 @@ def main():
                 phrase_complete=False
                 if silent_time:
                     total_silent += (now - silent_time)
-                    #print("idle",(now - silent_time), timedelta(seconds=record_timeout), total_silent)
                 if silent_time and total_silent > timedelta(seconds=3):
                     phrase_complete = True
+                    print("idle",(now - silent_time), timedelta(seconds=record_timeout), total_silent)
                     total_silent=timedelta(seconds=0)
                 silent_time = now
 
                 # Read the transcription.
                 text = ""
 
-                if not os.path.exists(temp_file):
-                    continue
+                #if not os.path.exists(temp_file):
+                #    continue
 
                 if phrase_complete:
                     if last_transcription:
-                        need_transcription = os.path.getsize(temp_file)
-                        print("idle",need_transcription,last_transcription)
-                        if need_transcription != last_transcription:
-                            segments, info = audio_model.transcribe(temp_file)
-                            last_transcription = os.path.getsize(temp_file)
+                        #need_transcription = os.path.getsize(temp_file)
+                        #print("idle",need_transcription,last_transcription)
+                        #if need_transcription != last_transcription:
+                        if wav_data != last_transcription:
+                            segments, info = audio_model.transcribe(wav_data)
+                            #last_transcription = os.path.getsize(temp_file)
+                            last_transcription = wav_data
                             silent_time = datetime.utcnow()
                             total_silent = timedelta(seconds=0)
                             text = ""
                             for segment in segments:
                                 text += segment.text
-                            #print("idle transcribe",text)
+                            print("idle transcribe",text)
                             transcription.append(text)
                     if len(transcription) > 0:
                         result = " ".join(transcription)
                         print("result:",result)
                         gtranslate = GoogleTranslate()
-                        translate_text = str(gtranslate.translate(result, source_language="en", destination_language="ja"))
-                        test = gtranslate.text_to_speech(translate_text,source_language="ja")
-                        test.write_to_file(f"test-{datetime.now()}.wav")
+                        #translate_text = str(gtranslate.translate(result, source_language="en", destination_language="ja"))
+                        translate_text = str(gtranslate.translate(result, source_language="en", destination_language="es"))
+                        test = gtranslate.text_to_speech(translate_text,source_language="es")
+                        test.write_to_file(f"test-{datetime.now().strftime('%Y%d%m%H%M%S')}.wav")
+                        #print("translate:",translate_text)
 
                     transcription = []
             else:
@@ -171,9 +175,11 @@ def main():
                 wav_data = io.BytesIO(audio_data.get_wav_data())
 
                 # Write wav data to the temporary file as bytes.
+                """
                 with open(temp_file, 'w+b') as f:
                     print(temp_file)
                     f.write(wav_data.read())
+                """                    
 
                 # Read the transcription.
                 text = ""
@@ -182,11 +188,13 @@ def main():
                 # Otherwise edit the existing one.
                 if phrase_complete:
                     #transcription.append(text)
-                    need_transcription = os.path.getsize(temp_file)
-                    if need_transcription == last_transcription:
+                    #need_transcription = os.path.getsize(temp_file)
+                    #if need_transcription == last_transcription:
+                    if wav_data == last_transcription:
                         continue
-                    segments, info = audio_model.transcribe(temp_file)
-                    last_transcription = os.path.getsize(temp_file)
+                    segments, info = audio_model.transcribe(wav_data)
+                    #last_transcription = os.path.getsize(temp_file)
+                    last_transcription = wav_data
                     silent_time = datetime.utcnow()
                     total_silent = timedelta(seconds=0)
                     for segment in segments:
